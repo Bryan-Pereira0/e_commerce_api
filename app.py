@@ -253,31 +253,50 @@ def create_order_request():
     db.session.commit()
     return jsonify({'message': 'Order added successfully.'}), 201
 
-
-#I cannot get this orders section to work, I will change it with the feedback I receive from you guys and resubmit it afterwards but I've been at it for hours and I can't get it to work.
-@app.route('/orders/<int:id>', methods=['POST'])
+#everything below here doesn't work I just changed it again and it still doesn't work if I could get some feedback on it I'd greatly appreciate it
+@app.route('/orders/<int:id>/add_product', methods=['POST'])
 def add_order_product(id):
     try:
         order_product_data = order_product_schema.load(request.json)
     except ValidationError as err:
         return jsonify(err.messages), 400
-    new_order_product = Order_Products(order_id=id, product_id=order_product_data['product_id'], quantity=order_product_data['quantity'])
+    
+    stock = Stock.query.filter_by(product_id=order_product_data['product_id']).first()
+    if not stock or stock.quantity < order_product_data['quantity']:
+        return jsonify({'error': 'Insufficient stock'}), 400
+
+    stock.quantity -= order_product_data['quantity']
+
+    new_order_product = Order_Products(
+        order_id=id,
+        product_id=order_product_data['product_id'],
+        quantity=order_product_data['quantity']
+    )
     db.session.add(new_order_product)
     db.session.commit()
-    return jsonify({'message': 'Ordered product successfully.'}), 201
+    return jsonify({'message': 'Product added to order successfully.'}), 201
 
 @app.route('/orders/<int:id>', methods=['GET'])
 def view_order(id):
     order = Orders.query.get_or_404(id)
     order_products = Order_Products.query.filter_by(order_id=id).all()
-    return order_schema.jsonify(order), order_products_schema.jsonify(order_products)
+    
+    order_details = order_schema.dump(order)
+    products = order_products_schema.dump(order_products)
+    
+    response = {
+        'order': order_details,
+        'products': products
+    }
+    return jsonify(response)
 
 @app.route('/orders/<int:id>', methods=['DELETE'])
 def delete_order(id):
     order = Orders.query.get_or_404(id)
+    Order_Products.query.filter_by(order_id=id).delete()
     db.session.delete(order)
     db.session.commit()
-    return jsonify({'message': 'Order deleted successfully.'})
+    return jsonify({'message': 'Order and associated products deleted successfully.'})
 
 
 
