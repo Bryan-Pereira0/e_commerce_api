@@ -1,4 +1,4 @@
-#E-commerce API
+# E-commerce API
 
 This application is an E-commerce CRUD API that lets you manage customers, products, orders and user accounts using a MySQL Database and SQLAlchemy.
 
